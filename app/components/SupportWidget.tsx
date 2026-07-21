@@ -233,9 +233,9 @@ export default function SupportWidget() {
   }
 
   return (
-    // Обертка теперь жестко сидит в правом нижнем углу и имеет z-index 50
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 select-none">
-      
+    // pointer-events-none — обёртка больше не перехватывает клики на всей своей площади
+    <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 select-none">
+
       {/* МИКРО-АНИМАЦИИ ВЫЛЕТА СООБЩЕНИЙ */}
       <style>{`
         @keyframes msgIn {
@@ -245,7 +245,7 @@ export default function SupportWidget() {
         .animate-msg-in { animation: msgIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
       `}</style>
 
-      {/* ОКНО ПОДДЕРЖКИ — СИДИТ НА МЕСТЕ И НЕ СДВИГАЕТ КНОПКУ */}
+      {/* ОКНО ПОДДЕРЖКИ — само возвращает себе клики через pointer-events-auto, когда открыто */}
       <div 
         className={`flex h-[70vh] max-h-[480px] w-[90vw] max-w-[340px] flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950/90 shadow-[0_25px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           ${open 
@@ -353,10 +353,10 @@ export default function SupportWidget() {
         </div>
       </div>
 
-      {/* КРУГЛАЯ КНОПКА ТРИГГЕРА — ТЕПЕРЬ ПОД ОКНОМ И НЕ СДВИГАЕТСЯ */}
+      {/* КРУГЛАЯ КНОПКА ТРИГГЕРА — pointer-events-auto возвращает ей кликабельность */}
       <button
         onClick={() => setOpen(!open)}
-        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-[0_10px_35px_rgba(124,58,237,0.4)] transition-all duration-300 hover:scale-105 hover:shadow-[0_15px_40px_rgba(124,58,237,0.5)] active:scale-95 text-xl overflow-hidden group"
+        className="pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-[0_10px_35px_rgba(124,58,237,0.4)] transition-all duration-300 hover:scale-105 hover:shadow-[0_15px_40px_rgba(124,58,237,0.5)] active:scale-95 text-xl overflow-hidden group"
       >
         <span className="relative z-10 transition-transform duration-300 group-hover:rotate-12">
           {open ? "✕" : "💬"}
