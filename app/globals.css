@@ -42,3 +42,10 @@ body {
 .animate-fade-in-up {
   animation: fade-in-up 0.25s ease-out both;
 }
+/* Фикс мобильных кликов */
+button, a, input, [role="button"] {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+  position: relative;
+  z-index: 10;
+}
