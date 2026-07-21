@@ -47,45 +47,45 @@ export default function GamePage() {
       ]
     : game.fields;
 
-  // ТОВАРЫ И ЦЕНЫ
+  // ТОВАРЫ И ЦЕНЫ (в рублях)
   const displayProducts = isBrawlStars
     ? [
-        { name: "30 Gems", price: 2.28, priceDisplay: "$2.28" },
-        { name: "80 Gems", price: 5.70, priceDisplay: "$5.70" },
-        { name: "170 Gems", price: 10.84, priceDisplay: "$10.84" },
-        { name: "360 Gems", price: 21.67, priceDisplay: "$21.67" },
-        { name: "950 Gems", price: 56.98, priceDisplay: "$56.98" },
-        { name: "2000 Gems", price: 112.13, priceDisplay: "$112.13" },
-        { name: "4000 Gems", price: 224.09, priceDisplay: "$224.09" },
-        { name: "6000 Gems", price: 336.24, priceDisplay: "$336.24" },
+        { name: "30 Gems", price: 176, priceDisplay: "176 ₽" },
+        { name: "80 Gems", price: 443, priceDisplay: "443 ₽" },
+        { name: "170 Gems", price: 887, priceDisplay: "887 ₽" },
+        { name: "360 Gems", price: 1835, priceDisplay: "1835 ₽" },
+        { name: "950 Gems", price: 4415, priceDisplay: "4415 ₽" },
+        { name: "2000 Gems", price: 8699, priceDisplay: "8699 ₽" },
+        { name: "4000 Gems", price: 17399, priceDisplay: "17399 ₽" },
+        { name: "6000 Gems", price: 26099, priceDisplay: "26099 ₽" },
       ]
     : isPubg
     ? [
-        { name: "60 UC 🪙", price: 2.05, priceDisplay: "$2.05" },
-        { name: "300 + 25 UC 🪙", price: 10.84, priceDisplay: "$10.84" },
-        { name: "600 + 60 UC 🪙", price: 18.25, priceDisplay: "$18.25" },
-        { name: "1500 + 300 UC 🪙", price: 42.20, priceDisplay: "$42.20" },
-        { name: "3000 + 850 UC 🪙", price: 84.35, priceDisplay: "$84.35" },
-        { name: "6000 + 2100 UC 🪙", price: 168.50, priceDisplay: "$168.50" },
-        { name: "Elite Pass LVL1-100 👑", price: 20.99, priceDisplay: "$20.99" },
-        { name: "Elite Pass Plus LVL1-100 ➕", price: 48.50, priceDisplay: "$48.50" },
-        { name: "Elite Pass LVL1-50 🎫", price: 13.25, priceDisplay: "$13.25" },
+        { name: "60 UC 🪙", price: 96, priceDisplay: "96 ₽" },
+        { name: "300 + 25 UC 🪙", price: 479, priceDisplay: "479 ₽" },
+        { name: "600 + 60 UC 🪙", price: 1031, priceDisplay: "1031 ₽" },
+        { name: "1500 + 300 UC 🪙", price: 2567, priceDisplay: "2567 ₽" },
+        { name: "3000 + 850 UC 🪙", price: 5135, priceDisplay: "5135 ₽" },
+        { name: "6000 + 2100 UC 🪙", price: 10259, priceDisplay: "10259 ₽" },
+        { name: "Elite Pass LVL1-100 👑", price: 1187, priceDisplay: "1187 ₽" },
+        { name: "Elite Pass Plus LVL1-100 ➕", price: 2951, priceDisplay: "2951 ₽" },
+        { name: "Elite Pass LVL1-50 🎫", price: 588, priceDisplay: "588 ₽" },
       ]
     : isFcMobile
     ? [
-        { name: "100 FC Points", price: 1.29, priceDisplay: "$1.29" },
-        { name: "520 FC Points", price: 5.99, priceDisplay: "$5.99" },
-        { name: "1070 FC Points", price: 11.99, priceDisplay: "$11.99" },
-        { name: "2200 FC Points", price: 22.99, priceDisplay: "$22.99" },
-        { name: "5750 FC Points", price: 54.99, priceDisplay: "$54.99" },
-        { name: "12000 FC Points", price: 109.99, priceDisplay: "$109.99" },
+        { name: "100 FC Points", price: 91, priceDisplay: "91 ₽" },
+        { name: "520 FC Points", price: 433, priceDisplay: "433 ₽" },
+        { name: "1070 FC Points", price: 899, priceDisplay: "899 ₽" },
+        { name: "2200 FC Points", price: 1775, priceDisplay: "1775 ₽" },
+        { name: "5750 FC Points", price: 4463, priceDisplay: "4463 ₽" },
+        { name: "12000 FC Points", price: 8903, priceDisplay: "8903 ₽" },
       ]
     : isFortnite
     ? [
-        { name: "800 V-Bucks", price: 5.99, priceDisplay: "$5.99" },
-        { name: "2400 V-Bucks", price: 14.99, priceDisplay: "$14.99" },
-        { name: "4500 V-Bucks", price: 23.99, priceDisplay: "$23.99" },
-        { name: "12500 V-Bucks", price: 59.99, priceDisplay: "$59.99" },
+        { name: "800 V-Bucks", price: 517, priceDisplay: "517 ₽" },
+        { name: "2400 V-Bucks", price: 1295, priceDisplay: "1295 ₽" },
+        { name: "4500 V-Bucks", price: 2087, priceDisplay: "2087 ₽" },
+        { name: "12500 V-Bucks", price: 5207, priceDisplay: "5207 ₽" },
       ]
     : game.products;
 
@@ -115,7 +115,7 @@ export default function GamePage() {
       product.name
     )}&price=${encodeURIComponent(
       product.priceDisplay
-    )}&priceUsd=${product.price}&playerInfo=${encodeURIComponent(
+    )}&priceRub=${product.price}&playerInfo=${encodeURIComponent(
       buildPlayerInfo()
     )}`;
 
@@ -145,6 +145,7 @@ export default function GamePage() {
                 alt={game.name}
                 fill
                 priority
+                unoptimized
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className="object-cover pointer-events-none"
               />

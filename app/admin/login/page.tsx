@@ -4,17 +4,33 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase/client";
 
-// Скрытый email владельца
+// Скрытый email владельца и секретный ПИН
 const OWNER_EMAIL = "sarvarmirzaliyev21@gmail.com";
+const SECRET_PIN = "1267";
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  // Состояния
+  const [step, setStep] = useState<"pin" | "login">("pin"); // 'pin' или 'login'
+  const [pin, setPin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // 1. Проверка PIN-кода
+  function handlePinSubmit() {
+    if (pin.trim() === SECRET_PIN) {
+      setError(null);
+      setStep("login"); // Переходим к форме авторизации
+    } else {
+      setError("Неверный PIN-код доступа");
+      setPin("");
+    }
+  }
+
+  // 2. Вход по паролю владельца
   async function handleLogin() {
     const inputPassword = password.trim();
 
@@ -59,45 +75,79 @@ export default function AdminLoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 text-white">
       <div className="w-full max-w-sm rounded-2xl border border-zinc-800/80 bg-zinc-900/60 p-7 backdrop-blur-xl shadow-2xl shadow-violet-950/20">
         
-        {/* Красивый заголовок */}
+        {/* Заголовок */}
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-fuchsia-400 to-white bg-clip-text text-transparent">
-            Добро пожаловать
+            {step === "pin" ? "Защищенный доступ" : "Добро пожаловать"}
           </h1>
           <p className="text-xs font-semibold text-zinc-500">
-            Панель управления владельца
+            {step === "pin" ? "Введите 4-значный PIN-код" : "Панель управления владельца"}
           </p>
         </div>
 
         <div className="mt-6 space-y-4">
+          {/* Сообщение об ошибке */}
           {error && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-400 font-bold animate-pulse">
               {error}
             </div>
           )}
 
-          <div>
-            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Пароль
-            </label>
-            <input
-              type="password"
-              autoFocus
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 p-3.5 text-sm outline-none transition-all duration-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
-            />
-          </div>
+          {/* ЭТАП 1: Ввод PIN-кода */}
+          {step === "pin" && (
+            <>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                  PIN-код
+                </label>
+                <input
+                  type="password"
+                  maxLength={4}
+                  autoFocus
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handlePinSubmit()}
+                  placeholder="••••"
+                  className="w-full text-center tracking-[0.5em] text-lg rounded-xl border border-zinc-800 bg-zinc-950/80 p-3.5 outline-none transition-all duration-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                />
+              </div>
 
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-violet-600 via-violet-500 to-fuchsia-600 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-900/30 transition-all duration-300 hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? "Авторизация..." : "Войти"}
-          </button>
+              <button
+                onClick={handlePinSubmit}
+                className="w-full rounded-xl bg-gradient-to-r from-violet-600 via-violet-500 to-fuchsia-600 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-900/30 transition-all duration-300 hover:opacity-90 hover:scale-[1.01] active:scale-[0.98]"
+              >
+                Подтвердить
+              </button>
+            </>
+          )}
+
+          {/* ЭТАП 2: Форма входа (как на скриншоте) */}
+          {step === "login" && (
+            <>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-zinc-400">
+                  Пароль
+                </label>
+                <input
+                  type="password"
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 p-3.5 text-sm outline-none transition-all duration-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
+                />
+              </div>
+
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="w-full rounded-xl bg-gradient-to-r from-violet-600 via-violet-500 to-fuchsia-600 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-900/30 transition-all duration-300 hover:opacity-90 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+              >
+                {loading ? "Авторизация..." : "Войти"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </main>

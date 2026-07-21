@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SupportWidget from "./components/SupportWidget";
+import OnlineTracker from "./components/OnlineTracker";
 import { AuthProvider } from "./context/AuthContext";
 
 const geistSans = Geist({
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col overflow-x-hidden bg-zinc-950 text-white">
         <AuthProvider>
+          <OnlineTracker />
           {children}
           <SupportWidget />
         </AuthProvider>

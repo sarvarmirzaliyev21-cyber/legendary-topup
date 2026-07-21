@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "../../lib/supabase/client";
 
+const OWNER_EMAIL = "sarvarmirzaliyev21@gmail.com";
+
 type Message = {
   id: string;
   session_id: string;
@@ -33,6 +35,7 @@ export default function AdminSupportPage() {
   const supabase = createClient();
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionStatus, setSessionStatus] = useState<Record<string, string>>({});
   const [activeSession, setActiveSession] = useState<string | null>(null);
@@ -46,38 +49,32 @@ export default function AdminSupportPage() {
   const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeSessionRef = useRef<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null); // Реф для автоскролла вниз при новых сообщениях
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     activeSessionRef.current = activeSession;
-    // При смене сессии плавно крутим чат в самый низ
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeSession, messages, userTyping]);
 
   useEffect(() => {
     async function checkAuth() {
       const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        router.push("/admin/login");
-        return;
-      }
+      setIsOwner(data.session?.user.email === OWNER_EMAIL);
       setCheckingAuth(false);
     }
     checkAuth();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        router.push("/admin/login");
-      }
+      setIsOwner(session?.user.email === OWNER_EMAIL);
     });
 
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
-    if (checkingAuth) return;
+    if (checkingAuth || !isOwner) return;
 
     const presenceChannel = supabase.channel("admin_presence");
     presenceChannel.subscribe(async (status) => {
@@ -89,13 +86,13 @@ export default function AdminSupportPage() {
     return () => {
       supabase.removeChannel(presenceChannel);
     };
-  }, [checkingAuth]);
+  }, [checkingAuth, isOwner]);
 
   useEffect(() => {
-    if (checkingAuth) return;
+    if (checkingAuth || !isOwner) return;
     loadMessages();
     loadSessionStatuses();
-  }, [checkingAuth]);
+  }, [checkingAuth, isOwner]);
 
   async function loadMessages() {
     const { data } = await supabase
@@ -117,7 +114,7 @@ export default function AdminSupportPage() {
   }
 
   useEffect(() => {
-    if (checkingAuth) return;
+    if (checkingAuth || !isOwner) return;
 
     const channel = supabase
       .channel("support_room", {
@@ -165,7 +162,7 @@ export default function AdminSupportPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [checkingAuth]);
+  }, [checkingAuth, isOwner]);
 
   useEffect(() => {
     setUserTyping(false);
@@ -307,10 +304,24 @@ export default function AdminSupportPage() {
     );
   }
 
+  if (!isOwner) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 text-white select-none">
+        <div className="text-center space-y-3 max-w-sm px-6 py-8 rounded-2xl border border-zinc-900/50 bg-zinc-900/10 backdrop-blur-md">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-xl">
+            🔒
+          </div>
+          <h1 className="text-base font-bold text-zinc-200">Доступ запрещён</h1>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            Эта страница доступна только владельцу сайта.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex h-screen bg-zinc-950 text-white selection:bg-violet-500/30 overflow-hidden relative z-10">
-      
-      {/* КИНЕМАТОГРАФИЧНЫЙ ОТРЕНДЕРЕННЫЙ СТРИМ СООБЩЕНИЙ */}
       <style>{`
         @keyframes msgIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -321,13 +332,12 @@ export default function AdminSupportPage() {
         .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      {/* ЛЕВАЯ ПАНЕЛЬ: СПИСОК ТИКЕТОВ ПОДДЕРЖКИ (СТЕКЛО) */}
+      {/* Левая колонка со списками диалогов */}
       <div
         className={`w-full shrink-0 flex-col border-r border-zinc-900 bg-zinc-900/10 backdrop-blur-xl md:flex md:w-85 transition-all duration-300 ${
           activeSession ? "hidden md:flex" : "flex"
         }`}
       >
-        {/* Шапка списка */}
         <div className="border-b border-zinc-900 p-4 space-y-3 bg-zinc-950/20">
           <div className="flex items-center justify-between">
             <div>
@@ -343,7 +353,6 @@ export default function AdminSupportPage() {
               </div>
             </div>
 
-            {/* Современная скользящая кнопка «На сайт» */}
             <Link
               href="/"
               className="group flex h-8 items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/40 px-3 text-xs font-black text-zinc-400 transition-all duration-300 hover:border-violet-500/30 hover:bg-zinc-900 hover:text-white active:scale-95 shadow-sm"
@@ -360,7 +369,6 @@ export default function AdminSupportPage() {
             className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-3.5 py-2.5 text-xs text-zinc-200 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-700 font-medium"
           />
 
-          {/* Табы переключения состояния */}
           <div className="flex gap-1 rounded-xl bg-zinc-950/60 p-1 border border-zinc-900/80 text-xs">
             <button
               onClick={() => setShowArchived(false)}
@@ -381,7 +389,6 @@ export default function AdminSupportPage() {
           </div>
         </div>
 
-        {/* Скролл-список комнат диалогов */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
           {sessions.map((sessionId) => {
             const last = lastMessage(sessionId);
@@ -428,7 +435,6 @@ export default function AdminSupportPage() {
           )}
         </div>
 
-        {/* Подвал левой панели с кнопкой логаута */}
         <div className="p-3 border-t border-zinc-900/60 bg-zinc-950/30">
           <button 
             onClick={handleLogout}
@@ -439,10 +445,9 @@ export default function AdminSupportPage() {
         </div>
       </div>
 
-      {/* ПРАВАЯ ЧАСТЬ: ИНТЕРФЕЙС ТЕКУЩЕЙ ПЕРЕПИСКИ */}
+      {/* Правая колонка — активный чат */}
       <div className={`flex-1 flex-col bg-zinc-950/20 relative z-10 ${activeSession ? "flex" : "hidden md:flex"}`}>
         {!activeSession ? (
-          /* Стеклянное заглушечное состояние (когда чат пуст) */
           <div className="flex flex-1 flex-col items-center justify-center p-6 text-center select-none animate-msg">
             <div className="max-w-sm px-6 py-8 rounded-[28px] border border-zinc-900 bg-zinc-900/20 backdrop-blur-md shadow-inner space-y-3.5">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800 text-xl shadow-md">
@@ -450,13 +455,12 @@ export default function AdminSupportPage() {
               </div>
               <h3 className="text-sm font-black text-zinc-300">Диалог не выбран</h3>
               <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-                Выберите нужное обращение в списке слева, чтобы открыть полную историю переписки и ответить пользователю.
+                Выберите нужное обращение в списке слева, чтобы открыть чат.
               </p>
             </div>
           </div>
         ) : (
           <>
-            {/* ШАПКА АКТИВНОГО ДИАЛОГА */}
             <div className="flex items-center justify-between gap-4 border-b border-zinc-900 p-4 bg-zinc-950/40 backdrop-blur-md">
               <div className="flex items-center gap-3">
                 <button
@@ -482,9 +486,9 @@ export default function AdminSupportPage() {
               </button>
             </div>
 
-            {/* ЛЕНТА ДИАЛОГА С АВТОСКРОЛЛОМ */}
+            {/* Сообщения чата */}
             <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6 bg-zinc-950/10 scrollbar-thin flex flex-col">
-              <div className="flex-1" /> {/* Распорка для прижатия к низу */}
+              <div className="flex-1" />
               
               {activeMessages.map((m) => {
                 const isAdmin = m.sender === "admin";
@@ -502,71 +506,61 @@ export default function AdminSupportPage() {
                     >
                       {m.message}
                     </div>
-                    <span className="mt-1 px-1.5 text-[9px] font-bold text-zinc-600 tracking-wide font-mono">
+                    <span className="mt-1 px-1.5 text-[9px] font-bold text-zinc-600">
                       {formatTime(m.created_at)}
                     </span>
                   </div>
                 );
               })}
 
-              {/* ХОДУНКИ КЛИЕНТА (ЮЗЕР ПЕЧАТАЕТ...) */}
               {userTyping && (
-                <div className="animate-msg flex items-center gap-1.5 px-3.5 py-2.5 bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/60 rounded-full w-fit rounded-tl-none">
-                  <span className="h-1.5 w-1.5 Regal animate-bounce rounded-full bg-violet-400 [animation-delay:-0.3s]" />
-                  <span className="h-1.5 w-1.5 Regal animate-bounce rounded-full bg-violet-400 [animation-delay:-0.15s]" />
-                  <span className="h-1.5 w-1.5 Regal animate-bounce rounded-full bg-violet-400" />
+                <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium animate-pulse">
+                  <span>Пользователь печатает...</span>
                 </div>
               )}
-              
-              {/* Невидимый якорь для плавного автоскролла */}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* БЫСТРЫЕ ОТВЕТЫ (МЕНЮ ШАБЛОНОВ) */}
-            {showQuickReplies && (
-              <div className="animate-msg flex flex-wrap gap-1.5 border-t border-zinc-900/60 p-3 bg-zinc-950/60 backdrop-blur-md max-h-40 overflow-y-auto">
-                {QUICK_REPLIES.map((qr) => (
-                  <button
-                    key={qr}
-                    onClick={() => insertQuickReply(qr)}
-                    className="rounded-xl border border-zinc-800 bg-zinc-900/30 px-3 py-1.5 text-xs text-zinc-400 font-medium transition-all duration-200 hover:border-violet-500/30 hover:text-white hover:bg-zinc-900 active:scale-95 truncate max-w-full"
-                    title={qr}
-                  >
-                    {qr}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Быстрые ответы и строка ввода */}
+            <div className="border-t border-zinc-900/80 p-4 bg-zinc-950/60 space-y-3">
+              {showQuickReplies && (
+                <div className="flex flex-wrap gap-2 p-2 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 animate-msg">
+                  {QUICK_REPLIES.map((tmpl) => (
+                    <button
+                      key={tmpl}
+                      onClick={() => insertQuickReply(tmpl)}
+                      className="text-xs bg-zinc-950 border border-zinc-800 px-3 py-1.5 rounded-xl hover:border-violet-500/50 hover:text-violet-300 text-zinc-300 font-medium transition-all"
+                    >
+                      {tmpl}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {/* ЗОНА ВВОДА И ОТПРАВКИ */}
-            <div className="flex gap-2 border-t border-zinc-900/60 p-3 sm:p-4 bg-zinc-950/40 backdrop-blur-md">
-              <button
-                onClick={() => setShowQuickReplies((v) => !v)}
-                title="Быстрые ответы"
-                className={`shrink-0 w-11 rounded-xl border text-sm font-black transition-all duration-300 active:scale-95 select-none ${
-                  showQuickReplies
-                    ? "border-violet-500 bg-violet-500/10 text-violet-400 shadow-[0_0_15px_rgba(124,58,237,0.2)]"
-                    : "border-zinc-800 text-zinc-500 bg-zinc-900/40 hover:text-zinc-300 hover:border-zinc-700"
-                }`}
-              >
-                ⚡
-              </button>
-              
-              <input
-                value={reply}
-                onChange={(e) => handleReplyChange(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleReply()}
-                placeholder="Напишите ответ клиенту..."
-                className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-xs text-zinc-200 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-600 font-medium"
-              />
-              
-              <button
-                onClick={handleReply}
-                disabled={!reply.trim()}
-                className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 text-xs font-black text-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-600/20 hover:scale-[1.02] active:scale-95 disabled:opacity-40 disabled:pointer-events-none disabled:scale-100"
-              >
-                Отправить
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowQuickReplies((prev) => !prev)}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 text-xs font-bold text-zinc-400 hover:text-white transition-all"
+                  title="Быстрые шаблоны"
+                >
+                  ⚡
+                </button>
+                <input
+                  type="text"
+                  value={reply}
+                  onChange={(e) => handleReplyChange(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleReply()}
+                  placeholder="Написать ответ..."
+                  className="flex-1 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-xs text-zinc-100 outline-none focus:border-violet-500 font-medium"
+                />
+                <button
+                  onClick={handleReply}
+                  disabled={!reply.trim()}
+                  className="rounded-xl bg-violet-600 px-5 py-3 text-xs font-black text-white hover:bg-violet-500 transition-all active:scale-95 disabled:opacity-40"
+                >
+                  Отправить
+                </button>
+              </div>
             </div>
           </>
         )}

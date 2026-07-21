@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { paymentDetails } from "../data/payments";
-import { EXCHANGE_RATE_UZS_PER_USD } from "../data/games";
+import { EXCHANGE_RATE_UZS_PER_RUB } from "../data/games";
 import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
 export default function CheckoutContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
   const game = searchParams.get("game") ?? "Товар";
   const product = searchParams.get("product") ?? "";
   const price = searchParams.get("price") ?? "";
-  const priceUsd = parseFloat(searchParams.get("priceUsd") ?? "0");
+  const priceRub = parseFloat(searchParams.get("priceRub") ?? "0");
   const playerInfoRaw = searchParams.get("playerInfo") ?? "{}";
 
   let playerInfo: Record<string, string> = {};
@@ -24,7 +25,7 @@ export default function CheckoutContent() {
     playerInfo = {};
   }
 
-  const sumAmount = Math.round(priceUsd * EXCHANGE_RATE_UZS_PER_USD);
+  const sumAmount = Math.round(priceRub * EXCHANGE_RATE_UZS_PER_RUB);
   const sumAmountFormatted = `${sumAmount.toLocaleString("ru-RU")} сум`;
 
   const [cardCopied, setCardCopied] = useState(false);
@@ -47,9 +48,9 @@ export default function CheckoutContent() {
   }
 
   async function handleSubmit() {
-    if (!receipt) return;
+    if (!receipt || !user) return;
 
-    setLoading(true); // Ошибка исправлена: используем функцию стейта
+    setLoading(true);
     setError(null);
 
     try {
@@ -69,11 +70,11 @@ export default function CheckoutContent() {
       const { error: insertError } = await supabase.from("orders").insert({
         game,
         product,
-        price_usd: priceUsd,
+        price_usd: priceRub, // храним рублёвую цену в существующей колонке
         price_sum: sumAmount,
         receipt_url: publicUrlData.publicUrl,
         player_info: JSON.stringify(playerInfo),
-        user_id: user?.id ?? null,
+        user_id: user.id,
       });
 
       if (insertError) throw insertError;
@@ -87,6 +88,48 @@ export default function CheckoutContent() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        <span className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-violet-500" />
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 text-white">
+        <div className="max-w-sm w-full rounded-[32px] border border-zinc-900 bg-zinc-900/30 backdrop-blur-xl p-8 text-center shadow-2xl shadow-black/50">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 border border-violet-500/20 text-3xl">
+            🔒
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-zinc-100 mt-5">
+            Нужно войти
+          </h1>
+          <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
+            Чтобы оформить заказ на <span className="text-violet-400 font-bold">{product || "товар"}</span>, сначала войдите в аккаунт или зарегистрируйтесь — это займёт минуту.
+          </p>
+
+          <button
+            onClick={() =>
+              router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+            }
+            className="mt-6 w-full rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 py-3.5 text-sm font-black text-white shadow-lg shadow-violet-950/30 transition-all duration-300 hover:scale-[1.01] active:scale-98"
+          >
+            Войти / Зарегистрироваться
+          </button>
+
+          <button
+            onClick={() => router.back()}
+            className="mt-3 w-full rounded-xl border border-zinc-800 py-3 text-xs font-semibold text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white"
+          >
+            Вернуться назад
+          </button>
+        </div>
+      </main>
+    );
   }
 
   if (submitted) {

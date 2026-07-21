@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 type GameCardProps = {
   name: string;
@@ -31,11 +32,13 @@ export default function GameCard({
 
       {/* БЛОК КАРТИНКИ С УМНЫМ ЗАТЕМНЕНИЕМ */}
       <div className="relative h-48 overflow-hidden sm:h-56 md:h-64 lg:h-72">
-        <img
+        <Image
           src={image}
           alt={name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+          fill
+          unoptimized
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
         />
         {/* Градиент снизу вверх для идеальной читаемости текста */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent transition-opacity duration-500 group-hover:opacity-90" />
