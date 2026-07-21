@@ -136,13 +136,17 @@ export default function GamePage() {
   function handleBuyClick(product: any) {
     if (!isAllFieldsFilled) {
       setShowError(true);
-      window.scrollTo({ top: 150, behavior: "smooth" });
+      // Более безопасный скролл для мобилок
+      const headerOffset = 100;
+      const elementPosition = document.getElementById('account-data-section')?.getBoundingClientRect().top || 0;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      window.scrollTo({ top: offsetPosition, behavior: "smooth" });
       return;
     }
 
     const url = `/checkout?game=${encodeURIComponent(
-  game?.name || ""
-)}&product=${encodeURIComponent(
+      game?.name || ""
+    )}&product=${encodeURIComponent(
       product.name
     )}&price=${encodeURIComponent(
       product.priceDisplay
@@ -154,7 +158,7 @@ export default function GamePage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white selection:bg-violet-500/30 relative z-10">
+    <main className="min-h-[100dvh] bg-zinc-950 text-white selection:bg-violet-500/30 relative z-10">
       <style>{`
         @keyframes packIn {
           from { opacity: 0; transform: translateY(12px); }
@@ -164,7 +168,6 @@ export default function GamePage() {
           animation: packIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
         }
 
-        /* Стильный скроллбар */
         .scrollbar-custom::-webkit-scrollbar {
           width: 6px;
         }
@@ -184,8 +187,9 @@ export default function GamePage() {
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 md:py-16">
         <div className="mb-6">
           <button
+            type="button"
             onClick={() => router.push("/")}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 transition-colors hover:text-zinc-300"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-500 transition-colors hover:text-zinc-300 relative z-20 pointer-events-auto touch-manipulation"
           >
             ← Назад к витрине игр
           </button>
@@ -193,16 +197,16 @@ export default function GamePage() {
 
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-start">
           {/* ЛЕВАЯ КОЛОНКА */}
-          <div className="sticky top-24">
+          <div className="sticky top-24 pointer-events-none lg:pointer-events-auto">
             <img
               src={game.image}
               alt={game.name}
-              className="w-full rounded-[32px] border border-zinc-900 bg-zinc-900/10 backdrop-blur-md shadow-2xl shadow-violet-950/10 object-cover aspect-[4/3] lg:aspect-auto"
+              className="w-full rounded-[32px] border border-zinc-900 bg-zinc-900/10 backdrop-blur-md shadow-2xl shadow-violet-950/10 object-cover aspect-[4/3] lg:aspect-auto pointer-events-none"
             />
           </div>
 
           {/* ПРАВАЯ КОЛОНКА */}
-          <div className="space-y-8">
+          <div className="space-y-8 relative z-20">
             <div className="space-y-4">
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 border border-violet-500/30 px-3.5 py-1.5 text-xs font-black text-violet-300 shadow-[0_0_15px_rgba(124,58,237,0.15)] select-none">
                 ⚡ Моментальное пополнение
@@ -216,7 +220,7 @@ export default function GamePage() {
             </div>
 
             {/* БЛОК ПОЛЕЙ ВВОДА ДАННЫХ ИГРОКА */}
-            <div className={`space-y-5 rounded-2xl border backdrop-blur-md p-5 sm:p-6 shadow-sm transition-all duration-300 ${
+            <div id="account-data-section" className={`space-y-5 rounded-2xl border backdrop-blur-md p-5 sm:p-6 shadow-sm transition-all duration-300 relative z-30 ${
               showError
                 ? "border-red-500/40 bg-red-500/5 shadow-[0_0_30px_rgba(239,68,68,0.1)]"
                 : "border-zinc-900 bg-zinc-900/30"
@@ -232,24 +236,30 @@ export default function GamePage() {
                 )}
               </div>
 
-              {displayFields.map((field) => (
-                <div key={field.label} className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 px-0.5">
-                    {field.label}
-                  </label>
-                  <input
-                    placeholder={field.placeholder}
-                    value={fieldValues[field.label] ?? ""}
-                    onChange={(e) => handleFieldChange(field.label, e.target.value)}
-                    className={`w-full rounded-xl border p-4 text-sm text-zinc-200 outline-none transition-all duration-300 font-medium ${
-                      showError && (!fieldValues[field.label] || fieldValues[field.label].trim() === "")
-                        ? "border-red-500 bg-red-950/20 focus:border-red-400 focus:ring-red-500/5"
-                        : "border-zinc-800 bg-zinc-950/60 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-600"
-                    }`}
-                  />
-                </div>
-              ))}
+              {displayFields.map((field, i) => {
+                const inputId = `input-${i}`; // Уникальный ID для связки label и input
+                return (
+                  <div key={field.label} className="space-y-2 relative z-30">
+                    <label htmlFor={inputId} className="block text-xs font-bold uppercase tracking-wider text-zinc-400 px-0.5">
+                      {field.label}
+                    </label>
+                    <input
+                      id={inputId}
+                      type="text"
+                      placeholder={field.placeholder}
+                      value={fieldValues[field.label] ?? ""}
+                      onChange={(e) => handleFieldChange(field.label, e.target.value)}
+                      className={`relative z-40 block w-full pointer-events-auto touch-manipulation rounded-xl border p-4 text-sm text-zinc-200 outline-none transition-all duration-300 font-medium ${
+                        showError && (!fieldValues[field.label] || fieldValues[field.label].trim() === "")
+                          ? "border-red-500 bg-red-950/20 focus:border-red-400 focus:ring-red-500/5"
+                          : "border-zinc-800 bg-zinc-950/60 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-600"
+                      }`}
+                    />
+                  </div>
+                );
+              })}
 
+              {/* Уведомления */}
               {isBrawlStars && (
                 <div className="rounded-xl border border-violet-500/20 bg-violet-600/10 p-4 text-xs font-medium text-violet-300 leading-relaxed">
                   <span className="font-black text-violet-400 uppercase tracking-wide block mb-1">💬 Внимание:</span> 
@@ -280,12 +290,12 @@ export default function GamePage() {
             </div>
 
             {/* СПИСОК ПАКЕТОВ */}
-            <div className="space-y-4">
+            <div className="space-y-4 relative z-30">
               <h2 className="text-xs font-black uppercase tracking-widest text-zinc-400 px-1">
                 2. Выберите пополнение
               </h2>
 
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-custom">
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-custom pointer-events-auto">
                 {displayProducts.map((product, index) => (
                   <div
                     key={product.name}
@@ -302,8 +312,9 @@ export default function GamePage() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => handleBuyClick(product)}
-                      className={`w-full rounded-xl px-6 py-3 text-center text-xs font-black tracking-wide text-white shadow-md transition-all duration-300 sm:w-auto select-none ${
+                      className={`relative z-40 pointer-events-auto touch-manipulation w-full rounded-xl px-6 py-3 text-center text-xs font-black tracking-wide text-white shadow-md transition-all duration-300 sm:w-auto select-none ${
                         isAllFieldsFilled
                           ? "bg-gradient-to-r from-violet-600 to-violet-500 shadow-violet-950/30 hover:from-violet-500 hover:to-fuchsia-600 hover:shadow-[0_0_20px_rgba(124,58,237,0.25)] active:scale-98"
                           : "bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-pointer hover:border-zinc-700 active:scale-95"
