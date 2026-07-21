@@ -141,8 +141,8 @@ export default function GamePage() {
     }
 
     const url = `/checkout?game=${encodeURIComponent(
-      game.name
-    )}&product=${encodeURIComponent(
+  game?.name || ""
+)}&product=${encodeURIComponent(
       product.name
     )}&price=${encodeURIComponent(
       product.priceDisplay
