@@ -8,9 +8,28 @@ body {
   background-color: #09090b;
   color: #ffffff;
   -webkit-font-smoothing: antialiased;
+  /* убирает "резиновый" перетяг фона при скролле в конец страницы */
+  overscroll-behavior-y: contain;
 }
 
 /* Оставляем только базовый фикс без ломки z-index */
 * {
   -webkit-tap-highlight-color: transparent;
+  /* убирает встроенную ~300мс задержку перед тапом на мобильных браузерах */
+  touch-action: manipulation;
+}
+
+/* безопасный отступ снизу для fixed-элементов (кнопка чата и т.п.),
+   чтобы не залезать под системные жесты/чёлку на iPhone */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* лёгкий, дешёвый для GPU способ дать тактильный отклик на тап,
+   без hover-конфликтов на мобилке */
+.tap-active {
+  transition: transform 0.12s ease;
+}
+.tap-active:active {
+  transform: scale(0.96);
 }

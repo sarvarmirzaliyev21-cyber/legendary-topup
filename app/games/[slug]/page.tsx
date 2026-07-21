@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { games } from "../../data/games";
 import { notFound, useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
@@ -136,13 +137,18 @@ export default function GamePage() {
 
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-start">
           
-          {/* ЛЕВАЯ КОЛОНКА (картинка). Вот тут был баг! Заменили sticky top-24 на lg:sticky */}
+          {/* ЛЕВАЯ КОЛОНКА (картинка) */}
           <div className="static lg:sticky lg:top-24">
-            <img
-              src={game.image}
-              alt={game.name}
-              className="w-full rounded-[32px] border border-zinc-900 bg-zinc-900/10 object-cover aspect-[4/3] lg:aspect-auto pointer-events-none"
-            />
+            <div className="relative w-full aspect-[4/3] overflow-hidden rounded-[32px] border border-zinc-900 bg-zinc-900/10">
+              <Image
+                src={game.image}
+                alt={game.name}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover pointer-events-none"
+              />
+            </div>
           </div>
 
           {/* ПРАВАЯ КОЛОНКА */}
@@ -159,7 +165,7 @@ export default function GamePage() {
               </p>
             </div>
 
-            {/* ФОРМА (убрали багованный блюр для мобилок) */}
+            {/* ФОРМА */}
             <div className={`space-y-5 rounded-2xl border bg-zinc-900/90 lg:bg-zinc-900/30 lg:backdrop-blur-md p-5 sm:p-6 transition-all duration-300 ${
               showError ? "border-red-500/40" : "border-zinc-900"
             }`}>
