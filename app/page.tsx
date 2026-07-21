@@ -8,7 +8,7 @@ import { games } from "./data/games";
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen bg-zinc-950 text-white flex flex-col selection:bg-violet-500/30 overflow-x-hidden">
+    <main className="relative min-h-[100dvh] bg-zinc-950 text-white flex flex-col selection:bg-violet-500/30 overflow-x-hidden">
       
       {/* ИНЖЕКТ CSS-АНИМАЦИЙ ДВИЖЕНИЯ ФОНА И КАРТОЧЕК */}
       <style>{`
@@ -51,7 +51,7 @@ export default function Home() {
       </div>
 
       {/* КОНТЕНТ САЙТА */}
-      <div className="relative z-10 flex flex-col min-h-screen">
+      <div className="relative z-10 flex flex-col min-h-[100dvh]">
         <Navbar />
         <OwnerBanner />
         
@@ -72,7 +72,7 @@ export default function Home() {
               <div 
                 key={game.slug}
                 className="animate-card-fade"
-                style={{ animationDelay: `${index * 50}ms` }} // Карточки вылетают по очереди
+                style={{ animationDelay: `${index * 50}ms` }}
               >
                 <GameCard
                   name={game.name}
