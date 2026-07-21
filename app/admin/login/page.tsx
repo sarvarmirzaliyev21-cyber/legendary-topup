@@ -18,8 +18,9 @@ export default function AdminLoginPage() {
 
   async function handleLogin() {
     const inputEmail = email.trim().toLowerCase();
-    
-    if (!inputEmail || !password.trim()) {
+    let inputPassword = password.trim();
+
+    if (!inputEmail || !inputPassword) {
       setError("Заполните все поля");
       return;
     }
@@ -30,13 +31,18 @@ export default function AdminLoginPage() {
       return;
     }
 
+    // Если ввёл 4 цифры пина (1267), добиваем до 6 символов для Supabase
+    if (inputPassword === "1267") {
+      inputPassword = "126700";
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       const loginPromise = supabase.auth.signInWithPassword({
         email: inputEmail,
-        password: password.trim(),
+        password: inputPassword,
       });
 
       const timeoutPromise = new Promise((_, reject) =>
