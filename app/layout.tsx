@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   title: "LegendaryTopUp — Пополнение игр и сервисов",
   description:
     "Быстрое и безопасное пополнение игровой валюты: PUBG Mobile, Genshin Impact, Mobile Legends, Telegram Premium и другие.",
+  verification: {
+    google: "google98d28cf41bbf6b8d", // Чистый код без префиксов и .html
+  },
 };
 
 export const viewport: Viewport = {
