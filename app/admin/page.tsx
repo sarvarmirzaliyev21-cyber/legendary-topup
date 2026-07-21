@@ -53,72 +53,6 @@ function parsePlayerInfo(raw: string | null) {
   }
 }
 
-function PinGate({ onVerified }: { onVerified: () => void }) {
-  const [pin, setPin] = useState("");
-  const [error, setError] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(false);
-
-    const res = await fetch("/api/admin-pin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin }),
-    });
-
-    setSubmitting(false);
-
-    if (res.ok) {
-      onVerified();
-    } else {
-      setError(true);
-      setPin("");
-    }
-  }
-
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 text-white select-none">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 backdrop-blur-xl shadow-xl shadow-black/40"
-      >
-        <div className="mb-4 text-center text-4xl">🔐</div>
-        <h1 className="text-center text-xl font-black tracking-tight text-zinc-100">Код доступа</h1>
-        <p className="mt-1.5 text-center text-xs text-zinc-500 leading-relaxed">
-          Введите PIN-код для входа в панель владельца
-        </p>
-
-        <input
-          type="password"
-          inputMode="numeric"
-          autoFocus
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          className="mt-5 w-full rounded-xl border border-zinc-800 bg-zinc-950/60 p-3.5 text-center text-xl tracking-widest outline-none transition-all duration-300 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-700 text-white font-mono"
-          placeholder="••••"
-        />
-
-        {error && (
-          <p className="mt-2.5 text-center text-xs font-semibold text-red-400 animate-pulse">
-            Неверный код, попробуйте ещё раз
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting || pin.length === 0}
-          className="mt-4 w-full rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 py-3 text-sm font-black text-white shadow-lg shadow-violet-950/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-violet-600/10 active:scale-98 disabled:opacity-40 disabled:pointer-events-none"
-        >
-          {submitting ? "Проверка..." : "Войти"}
-        </button>
-      </form>
-    </main>
-  );
-}
-
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
 
@@ -126,19 +60,6 @@ export default function AdminPage() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("все");
-
-  const [pinChecked, setPinChecked] = useState(false);
-  const [pinVerified, setPinVerified] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/admin-pin")
-      .then((res) => res.json())
-      .then((data) => {
-        setPinVerified(!!data.ok);
-        setPinChecked(true);
-      })
-      .catch(() => setPinChecked(true));
-  }, []);
 
   async function loadOrders() {
     const { data, error } = await supabase
@@ -151,10 +72,10 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    if (user?.email === ADMIN_EMAIL && pinVerified) {
+    if (user?.email === ADMIN_EMAIL) {
       loadOrders();
 
-      // Подписка на реалтайм: если клиент введет код, заказ мгновенно обновится на экране без перезагрузки
+      // Подписка на реалтайм
       const channel = supabase
         .channel("admin_orders_code_realtime")
         .on(
@@ -173,7 +94,7 @@ export default function AdminPage() {
     } else {
       setLoadingOrders(false);
     }
-  }, [user, pinVerified]);
+  }, [user]);
 
   async function updateStatus(id: string, status: string) {
     setUpdatingId(id);
@@ -206,7 +127,7 @@ export default function AdminPage() {
     setUpdatingId(null);
   }
 
-  if (authLoading || !pinChecked) {
+  if (authLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
         <span className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-800 border-t-violet-500" />
@@ -230,10 +151,6 @@ export default function AdminPage() {
     );
   }
 
-  if (!pinVerified) {
-    return <PinGate onVerified={() => setPinVerified(true)} />;
-  }
-
   if (loadingOrders) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
@@ -247,7 +164,6 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-8 text-white sm:px-6 md:py-12 selection:bg-violet-500/30">
-      
       <style>{`
         @keyframes orderIn {
           from { opacity: 0; transform: translateY(14px); }
