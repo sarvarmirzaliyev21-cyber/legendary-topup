@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description:
     "Быстрое и безопасное пополнение игровой валюты: PUBG Mobile, Genshin Impact, Mobile Legends, Telegram Premium и другие.",
   verification: {
-    google: "google98d28cf41bbf6b8d", // Чистый код без префиксов и .html
+    google: "QmJo_-XZogd9RVjQlv59NLrqaoXh2QFQ2rZPyMSj6bM",
   },
 };
 
