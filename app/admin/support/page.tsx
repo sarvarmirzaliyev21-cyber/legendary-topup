@@ -38,6 +38,7 @@ export default function AdminSupportPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionStatus, setSessionStatus] = useState<Record<string, string>>({});
+  const [sessionNicknames, setSessionNicknames] = useState<Record<string, string>>({});
   const [activeSession, setActiveSession] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [seenSessions, setSeenSessions] = useState<Set<string>>(new Set());
@@ -105,11 +106,14 @@ export default function AdminSupportPage() {
   async function loadSessionStatuses() {
     const { data } = await supabase.from("support_sessions").select("*");
     if (data) {
-      const map: Record<string, string> = {};
-      data.forEach((row: { session_id: string; status: string }) => {
-        map[row.session_id] = row.status;
+      const statusMap: Record<string, string> = {};
+      const nicknameMap: Record<string, string> = {};
+      data.forEach((row: { session_id: string; status: string; nickname?: string | null }) => {
+        statusMap[row.session_id] = row.status;
+        if (row.nickname) nicknameMap[row.session_id] = row.nickname;
       });
-      setSessionStatus(map);
+      setSessionStatus(statusMap);
+      setSessionNicknames(nicknameMap);
     }
   }
 
@@ -174,6 +178,10 @@ export default function AdminSupportPage() {
     router.push("/admin/login");
   }
 
+  function displayName(sessionId: string) {
+    return sessionNicknames[sessionId] || `ID: ${sessionId.slice(0, 8)}`;
+  }
+
   const allSessions = Array.from(new Set(messages.map((m) => m.session_id))).sort(
     (a, b) => {
       const lastA = messages.filter((m) => m.session_id === a).slice(-1)[0];
@@ -214,6 +222,7 @@ export default function AdminSupportPage() {
     const q = search.toLowerCase();
     return (
       sessionId.toLowerCase().includes(q) ||
+      displayName(sessionId).toLowerCase().includes(q) ||
       last?.message?.toLowerCase().includes(q)
     );
   });
@@ -365,7 +374,7 @@ export default function AdminSupportPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Поиск по ID или тексту..."
+            placeholder="Поиск по имени или тексту..."
             className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-3.5 py-2.5 text-xs text-zinc-200 outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-700 font-medium"
           />
 
@@ -406,7 +415,7 @@ export default function AdminSupportPage() {
               >
                 <div className="flex items-center justify-between text-[10px]">
                   <span className={`font-mono px-2 py-0.5 rounded-md border font-bold text-zinc-400 ${isCurrent ? 'border-violet-500/20 bg-zinc-950/60' : 'border-zinc-800/80 bg-zinc-950/30'}`}>
-                    ID: {sessionId.slice(0, 8)}
+                    {displayName(sessionId)}
                   </span>
                   {last && (
                     <span className="text-zinc-500 font-bold tracking-tight">
@@ -470,7 +479,7 @@ export default function AdminSupportPage() {
                   ← Назад
                 </button>
                 <span className="font-mono text-xs bg-zinc-950/80 border border-zinc-900 px-3 py-1.5 rounded-xl text-zinc-400 font-bold shadow-inner">
-                  Комната: {activeSession}
+                  {displayName(activeSession)}
                 </span>
               </div>
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { createClient } from "../lib/supabase/client";
+import { useAuth } from "../context/AuthContext";
 
 type Message = {
   id: string;
@@ -39,6 +41,8 @@ const ORIGINAL_TITLE = typeof document !== "undefined" ? document.title : "";
 
 export default function SupportWidget() {
   const supabase = createClient();
+  const { user, loading: authLoading } = useAuth();
+
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,6 +51,12 @@ export default function SupportWidget() {
   const [adminOnline, setAdminOnline] = useState(false);
   const [adminTyping, setAdminTyping] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+
+  // --- НИКНЕЙМ ---
+  const [nickname, setNickname] = useState<string | null>(null);
+  const [nicknameInput, setNicknameInput] = useState("");
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [claimingNickname, setClaimingNickname] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -62,7 +72,20 @@ export default function SupportWidget() {
 
   useEffect(() => {
     setSessionId(getSessionId());
+    setNickname(localStorage.getItem("support_nickname"));
   }, []);
+
+  // Автосинхронизация email — если юзер залогинился (сейчас или позже),
+  // подтягиваем его email в текущую сессию поддержки
+  useEffect(() => {
+    if (!sessionId || !user?.email) return;
+
+    supabase
+      .from("support_sessions")
+      .update({ email: user.email })
+      .eq("session_id", sessionId)
+      .then(() => {});
+  }, [sessionId, user?.email]);
 
   // Онлайн-статус админа
   useEffect(() => {
@@ -79,9 +102,9 @@ export default function SupportWidget() {
     };
   }, []);
 
-  // Подписка на сообщения Supabase
+  // Подписка на сообщения Supabase — только если юзер залогинен
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !user) return;
 
     async function loadMessages() {
       const { data } = await supabase
@@ -132,7 +155,7 @@ export default function SupportWidget() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionId]);
+  }, [sessionId, user]);
 
   useEffect(() => {
     if (unread > 0 && document.hidden) {
@@ -225,11 +248,76 @@ export default function SupportWidget() {
     await sendMessageText(trimmed);
   }
 
-  function handleStartNewChat() {
+  async function handleStartNewChat() {
+    const oldSessionId = sessionId;
+    const savedNickname = localStorage.getItem("support_nickname");
+
+    // освобождаем ник у старой сессии, чтобы не конфликтовал с новой
+    if (oldSessionId) {
+      await supabase
+        .from("support_sessions")
+        .update({ nickname: null })
+        .eq("session_id", oldSessionId);
+    }
+
     const id = newSessionId();
     setMessages([]);
     setSessionId(id);
     setConfirmReset(false);
+
+    if (savedNickname) {
+      await supabase.from("support_sessions").upsert(
+        {
+          session_id: id,
+          nickname: savedNickname,
+          email: user?.email ?? null,
+          status: "open",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "session_id" }
+      );
+    }
+  }
+
+  // --- ПРОВЕРКА И ЗАХВАТ НИКНЕЙМА ---
+  async function handleNicknameSubmit() {
+    const trimmed = nicknameInput.trim();
+    if (!trimmed) {
+      setNicknameError("Введите имя");
+      return;
+    }
+    if (trimmed.length > 30) {
+      setNicknameError("Слишком длинное имя");
+      return;
+    }
+
+    setClaimingNickname(true);
+    setNicknameError(null);
+
+    const { error } = await supabase.from("support_sessions").upsert(
+      {
+        session_id: sessionId,
+        nickname: trimmed,
+        email: user?.email ?? null,
+        status: "open",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "session_id" }
+    );
+
+    setClaimingNickname(false);
+
+    if (error) {
+      if (error.code === "23505") {
+        setNicknameError("Этот никнейм уже занят, выберите другой");
+      } else {
+        setNicknameError("Ошибка, попробуйте ещё раз");
+      }
+      return;
+    }
+
+    localStorage.setItem("support_nickname", trimmed);
+    setNickname(trimmed);
   }
 
   return (
@@ -269,12 +357,14 @@ export default function SupportWidget() {
           </div>
           
           <div className="flex items-center gap-3.5">
-            <button
-              onClick={() => setConfirmReset(true)}
-              className="text-white/70 transition-all hover:text-white hover:rotate-180 active:scale-90 text-sm"
-            >
-              🔄
-            </button>
+            {user && (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="text-white/70 transition-all hover:text-white hover:rotate-180 active:scale-90 text-sm"
+              >
+                🔄
+              </button>
+            )}
             <button
               onClick={() => setOpen(false)}
               className="text-white/70 transition-all hover:text-white hover:scale-110 active:scale-90 text-sm font-bold"
@@ -295,62 +385,116 @@ export default function SupportWidget() {
           </div>
         )}
 
-        {/* ЛЕНТА СООБЩЕНИЙ */}
-        <div className="flex-1 space-y-3.5 overflow-y-auto p-4 select-text bg-zinc-950/40">
-          {messages.length === 0 && (
-            <p className="text-xs text-zinc-500 text-center py-4 bg-zinc-900/30 rounded-xl border border-zinc-800/50 px-3">
-              Добро пожаловать! Чем мы можем помочь?
+        {authLoading ? (
+          /* --- ЗАГРУЗКА СТАТУСА АВТОРИЗАЦИИ --- */
+          <div className="flex-1 flex items-center justify-center bg-zinc-950/40">
+            <span className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-800 border-t-violet-500" />
+          </div>
+        ) : !user ? (
+          /* --- ТРЕБУЕТСЯ ВХОД --- */
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center bg-zinc-950/40">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 border border-zinc-800 text-xl">
+              🔒
+            </div>
+            <p className="text-sm text-zinc-200 font-bold">Нужно войти в аккаунт</p>
+            <p className="text-xs text-zinc-500 leading-relaxed max-w-[220px]">
+              Чтобы написать в поддержку, сначала войдите или зарегистрируйтесь
             </p>
-          )}
-
-          {messages.map((m) => (
-            <div key={m.id} className={`animate-msg-in flex flex-col ${m.sender === "admin" ? "items-start" : "items-end"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm break-words ${m.sender === "admin" ? "bg-zinc-900 text-zinc-100 rounded-tl-sm border border-zinc-800" : "bg-gradient-to-r from-violet-600 to-violet-500 text-white rounded-tr-sm shadow-md shadow-violet-950/30"}`}>
-                {m.message}
-              </div>
-              <span className="mt-1 px-1 text-[9px] text-zinc-500">{formatTime(m.created_at)}</span>
-            </div>
-          ))}
-
-          {adminTyping && (
-            <div className="animate-msg-in flex items-center gap-1.5 px-2 py-1.5 bg-zinc-900 rounded-full w-fit border border-zinc-800">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
-
-        {/* ГАДЖЕТ БЫСТРЫХ ТЕГОВ */}
-        <div className="flex gap-1.5 px-3 py-2 bg-zinc-950/60 overflow-x-auto border-t border-zinc-800 scrollbar-none">
-          {quickTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => sendMessageText(tag.substring(2))}
-              className="whitespace-nowrap rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-all hover:border-violet-500/50 hover:text-violet-400 active:scale-95"
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-600/20 active:scale-95"
             >
-              {tag}
+              Войти / Зарегистрироваться
+            </Link>
+          </div>
+        ) : !nickname ? (
+          /* --- ЭКРАН ВВОДА ИМЕНИ --- */
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center bg-zinc-950/40">
+            <p className="text-sm text-zinc-200 font-bold">Как вас зовут?</p>
+            <p className="text-xs text-zinc-500 -mt-1">Оператор увидит это имя вместо ID</p>
+            <input
+              value={nicknameInput}
+              onChange={(e) => {
+                setNicknameInput(e.target.value);
+                setNicknameError(null);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleNicknameSubmit()}
+              placeholder="Например, Максим"
+              autoFocus
+              className="w-full max-w-[220px] rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-xs text-white outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-500"
+            />
+            {nicknameError && (
+              <p className="text-[11px] text-red-400 font-bold">{nicknameError}</p>
+            )}
+            <button
+              onClick={handleNicknameSubmit}
+              disabled={claimingNickname}
+              className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-5 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-600/20 active:scale-95 disabled:opacity-50"
+            >
+              {claimingNickname ? "Проверяем..." : "Продолжить"}
             </button>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <>
+            {/* ЛЕНТА СООБЩЕНИЙ */}
+            <div className="flex-1 space-y-3.5 overflow-y-auto p-4 select-text bg-zinc-950/40">
+              {messages.length === 0 && (
+                <p className="text-xs text-zinc-500 text-center py-4 bg-zinc-900/30 rounded-xl border border-zinc-800/50 px-3">
+                  Добро пожаловать, {nickname}! Чем мы можем помочь?
+                </p>
+              )}
 
-        {/* ВВОД */}
-        <div className="flex gap-2 border-t border-zinc-800 p-3 bg-zinc-950">
-          <input
-            value={text}
-            onChange={(e) => handleTextChange(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Напишите сообщение..."
-            className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-xs text-white outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-500"
-          />
-          <button
-            onClick={handleSend}
-            className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-600/20 hover:scale-[1.04] active:scale-95"
-          >
-            →
-          </button>
-        </div>
+              {messages.map((m) => (
+                <div key={m.id} className={`animate-msg-in flex flex-col ${m.sender === "admin" ? "items-start" : "items-end"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm break-words ${m.sender === "admin" ? "bg-zinc-900 text-zinc-100 rounded-tl-sm border border-zinc-800" : "bg-gradient-to-r from-violet-600 to-violet-500 text-white rounded-tr-sm shadow-md shadow-violet-950/30"}`}>
+                    {m.message}
+                  </div>
+                  <span className="mt-1 px-1 text-[9px] text-zinc-500">{formatTime(m.created_at)}</span>
+                </div>
+              ))}
+
+              {adminTyping && (
+                <div className="animate-msg-in flex items-center gap-1.5 px-2 py-1.5 bg-zinc-900 rounded-full w-fit border border-zinc-800">
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* ГАДЖЕТ БЫСТРЫХ ТЕГОВ */}
+            <div className="flex gap-1.5 px-3 py-2 bg-zinc-950/60 overflow-x-auto border-t border-zinc-800 scrollbar-none">
+              {quickTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => sendMessageText(tag.substring(2))}
+                  className="whitespace-nowrap rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-all hover:border-violet-500/50 hover:text-violet-400 active:scale-95"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+
+            {/* ВВОД */}
+            <div className="flex gap-2 border-t border-zinc-800 p-3 bg-zinc-950">
+              <input
+                value={text}
+                onChange={(e) => handleTextChange(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Напишите сообщение..."
+                className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-xs text-white outline-none transition-all duration-300 focus:border-violet-500/50 focus:ring-4 focus:ring-violet-500/5 placeholder-zinc-500"
+              />
+              <button
+                onClick={handleSend}
+                className="rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:shadow-lg hover:shadow-violet-600/20 hover:scale-[1.04] active:scale-95"
+              >
+                →
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* КРУГЛАЯ КНОПКА ТРИГГЕРА — pointer-events-auto возвращает ей кликабельность */}
