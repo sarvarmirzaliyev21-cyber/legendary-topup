@@ -14,7 +14,13 @@ const WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET;
 export async function POST(req: NextRequest) {
   // 1. Проверяем секретный токен — чтобы никто посторонний не мог
   // слать фейковые "оплата пришла" запросы на этот адрес.
-  const providedSecret = req.headers.get("x-webhook-secret");
+  // Принимаем секрет и как HTTP-заголовок, и как query-параметр в URL —
+  // потому что некоторые версии MacroDroid отправляют "Параметры запроса"
+  // именно как ?x-webhook-secret=... в строке адреса, а не как настоящий header.
+  const providedSecret =
+    req.headers.get("x-webhook-secret") ??
+    req.nextUrl.searchParams.get("x-webhook-secret");
+
   if (!WEBHOOK_SECRET || providedSecret !== WEBHOOK_SECRET) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
