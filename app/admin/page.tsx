@@ -60,6 +60,7 @@ export default function AdminPage() {
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("все");
+  const [debugError, setDebugError] = useState<string | null>(null); // ВРЕМЕННО ДЛЯ ДИАГНОСТИКИ
 
   async function loadOrders() {
     const { data, error } = await supabase
@@ -67,7 +68,18 @@ export default function AdminPage() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && data) setOrders(data as Order[]);
+    if (error) {
+      // ВРЕМЕННОЕ ЛОГИРОВАНИЕ — ПОКАЖЕТ ПРИЧИНУ В КОНСОЛИ И НА ЭКРАНЕ
+      console.error("Ошибка загрузки заказов:", error.message, error.details, error.hint, error.code);
+      setDebugError(
+        `${error.message} | details: ${error.details ?? "-"} | hint: ${error.hint ?? "-"} | code: ${error.code ?? "-"}`
+      );
+    }
+
+    if (!error && data) {
+      setOrders(data as Order[]);
+      setDebugError(null);
+    }
     setLoadingOrders(false);
   }
 
@@ -107,6 +119,8 @@ export default function AdminPage() {
       setOrders((prev) =>
         prev.map((o) => (o.id === id ? { ...o, status } : o))
       );
+    } else {
+      console.error("Ошибка обновления статуса:", error.message);
     }
     setUpdatingId(null);
   }
@@ -123,6 +137,8 @@ export default function AdminPage() {
       setOrders((prev) =>
         prev.map((o) => (o.id === id ? { ...o, code_requested: true, verification_code: null } : o))
       );
+    } else {
+      console.error("Ошибка запроса кода:", error.message);
     }
     setUpdatingId(null);
   }
@@ -176,13 +192,20 @@ export default function AdminPage() {
 
       <div className="mx-auto max-w-4xl">
         <AdminNav />
-        
+
         <div className="mt-6 border-b border-zinc-900 pb-5">
           <h1 className="text-2xl font-black tracking-tight sm:text-3xl text-zinc-100">Заказы</h1>
           <p className="mt-1 text-xs text-zinc-500 font-medium">
             Всего заказов: <span className="text-zinc-400 font-bold">{orders.length}</span>
           </p>
         </div>
+
+        {/* ВРЕМЕННЫЙ БЛОК ДИАГНОСТИКИ ОШИБКИ — УДАЛИ ПОСЛЕ ТОГО КАК НАЙДЁМ ПРИЧИНУ */}
+        {debugError && (
+          <div className="mt-4 rounded-xl border border-red-500/40 bg-red-950/30 p-4 text-xs font-mono text-red-300 break-words">
+            ⚠️ DEBUG: {debugError}
+          </div>
+        )}
 
         {/* ТАБ-ФИЛЬТР */}
         <div className="mt-6 flex flex-wrap gap-1.5 overflow-x-auto pb-2 scrollbar-none">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { paymentDetails } from "../data/payments";
 import { EXCHANGE_RATE_UZS_PER_RUB } from "../data/games";
@@ -26,7 +26,13 @@ export default function CheckoutContent() {
   }
 
   const sumAmount = Math.round(priceRub * EXCHANGE_RATE_UZS_PER_RUB);
-  const sumAmountFormatted = `${sumAmount.toLocaleString("ru-RU")} сум`;
+
+  // УНИКАЛЬНЫЙ "ХВОСТИК" — добавляем 1-99 сум к сумме, чтобы автоматика
+  // могла точно сопоставить платёж с конкретным заказом.
+  // useMemo — чтобы хвостик не пересчитывался при каждом ре-рендере страницы.
+  const uniqueTail = useMemo(() => Math.floor(Math.random() * 99) + 1, []);
+  const paymentAmount = sumAmount + uniqueTail;
+  const paymentAmountFormatted = `${paymentAmount.toLocaleString("ru-RU")} сум`;
 
   const [cardCopied, setCardCopied] = useState(false);
   const [sumCopied, setSumCopied] = useState(false);
@@ -42,7 +48,7 @@ export default function CheckoutContent() {
   }
 
   function handleCopySum() {
-    navigator.clipboard.writeText(String(sumAmount));
+    navigator.clipboard.writeText(String(paymentAmount));
     setSumCopied(true);
     setTimeout(() => setSumCopied(false), 2000);
   }
@@ -72,6 +78,7 @@ export default function CheckoutContent() {
         product,
         price_usd: priceRub, // храним рублёвую цену в существующей колонке
         price_sum: sumAmount,
+        payment_amount: paymentAmount, // уникальная сумма для авто-сопоставления
         receipt_url: publicUrlData.publicUrl,
         player_info: JSON.stringify(playerInfo),
         user_id: user.id,
@@ -184,7 +191,7 @@ export default function CheckoutContent() {
           </h2>
 
           <p className="mt-1.5 text-3xl font-black tracking-tight text-white font-mono">
-            {sumAmountFormatted}
+            {paymentAmountFormatted}
           </p>
 
           <button
@@ -199,7 +206,7 @@ export default function CheckoutContent() {
           </button>
 
           <p className="mt-3 text-[11px] text-zinc-500 font-medium leading-relaxed">
-            Переводите ровно эту сумму — так автоматическая система и модераторы быстрее верифицируют платёж.
+            Важно: переводите <span className="text-violet-300 font-bold">ровно эту сумму, до сума</span> — благодаря ей система автоматически найдёт и подтвердит именно ваш платёж, без ожидания модератора.
           </p>
         </div>
 
