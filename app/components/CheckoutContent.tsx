@@ -86,6 +86,19 @@ export default function CheckoutContent() {
 
       if (insertError) throw insertError;
 
+      // Отправляем уведомление в Telegram (в фоне, не блокируя UI —
+      // если уведомление не дойдёт, заказ всё равно уже создан).
+      fetch("/api/notify-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          game,
+          product,
+          paymentAmount,
+          playerInfo,
+        }),
+      }).catch((err) => console.error("Notify error:", err));
+
       setSubmitted(true);
     } catch (err) {
       console.error(err);
