@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { games } from "../../data/games";
 import { notFound, useRouter } from "next/navigation";
@@ -15,6 +15,19 @@ export default function GamePage() {
 
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [showError, setShowError] = useState(false);
+  const [promoClaimed, setPromoClaimed] = useState(false);
+  const [promoLoading, setPromoLoading] = useState<string | null>(null);
+  const [promoMessage, setPromoMessage] = useState<string | null>(null);
+
+  // Проверяем при загрузке страницы, не разобрали ли уже акцию (для любой из игр)
+  useEffect(() => {
+    fetch("/api/claim-promo")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ok) setPromoClaimed(!!data.claimed);
+      })
+      .catch(() => {});
+  }, []);
 
   if (!game) {
     notFound();
@@ -50,7 +63,7 @@ export default function GamePage() {
   // ТОВАРЫ И ЦЕНЫ (в рублях)
   const displayProducts = isBrawlStars
     ? [
-        { name: "30 Gems", price: 176, priceDisplay: "176 ₽" },
+        { name: "30 Gems", price: 1, priceDisplay: "1 ₽", promo: true },
         { name: "80 Gems", price: 443, priceDisplay: "443 ₽" },
         { name: "170 Gems", price: 887, priceDisplay: "887 ₽" },
         { name: "360 Gems", price: 1835, priceDisplay: "1835 ₽" },
@@ -61,7 +74,7 @@ export default function GamePage() {
       ]
     : isPubg
     ? [
-        { name: "60 UC 🪙", price: 96, priceDisplay: "96 ₽" },
+        { name: "60 UC 🪙", price: 1, priceDisplay: "1 ₽", promo: true },
         { name: "300 + 25 UC 🪙", price: 479, priceDisplay: "479 ₽" },
         { name: "600 + 60 UC 🪙", price: 1031, priceDisplay: "1031 ₽" },
         { name: "1500 + 300 UC 🪙", price: 2567, priceDisplay: "2567 ₽" },
@@ -73,7 +86,7 @@ export default function GamePage() {
       ]
     : isFcMobile
     ? [
-        { name: "100 FC Points", price: 91, priceDisplay: "91 ₽" },
+        { name: "100 FC Points", price: 1, priceDisplay: "1 ₽", promo: true },
         { name: "520 FC Points", price: 433, priceDisplay: "433 ₽" },
         { name: "1070 FC Points", price: 899, priceDisplay: "899 ₽" },
         { name: "2200 FC Points", price: 1775, priceDisplay: "1775 ₽" },
@@ -102,13 +115,7 @@ export default function GamePage() {
     (f) => fieldValues[f.label] && fieldValues[f.label].trim() !== ""
   );
 
-  function handleBuyClick(product: any) {
-    if (!isAllFieldsFilled) {
-      setShowError(true);
-      window.scrollTo({ top: 100, behavior: "smooth" });
-      return;
-    }
-
+  function goToCheckout(product: any) {
     const url = `/checkout?game=${encodeURIComponent(
       game?.name || ""
     )}&product=${encodeURIComponent(
@@ -120,6 +127,51 @@ export default function GamePage() {
     )}`;
 
     router.push(url);
+  }
+
+  async function handleBuyClick(product: any) {
+    if (!isAllFieldsFilled) {
+      setShowError(true);
+      window.scrollTo({ top: 100, behavior: "smooth" });
+      return;
+    }
+
+    // Обычный товар — сразу на checkout, без обращения к промо-API
+    if (!product.promo) {
+      goToCheckout(product);
+      return;
+    }
+
+    // Промо-товар (1 ₽) — сначала пытаемся "занять" акцию на сервере
+    setPromoMessage(null);
+    setPromoLoading(product.name);
+
+    try {
+      const res = await fetch("/api/claim-promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 409 || data?.claimed) {
+        setPromoClaimed(true);
+        setPromoMessage("Извините, этот товар за 1 ₽ уже забрали 😔");
+        return;
+      }
+
+      if (!data?.ok) {
+        setPromoMessage("Не получилось оформить акцию, попробуйте ещё раз.");
+        return;
+      }
+
+      // Успешно заняли акцию — идём оформлять заказ
+      goToCheckout(product);
+    } catch {
+      setPromoMessage("Ошибка сети. Попробуйте ещё раз.");
+    } finally {
+      setPromoLoading(null);
+    }
   }
 
   return (
@@ -202,31 +254,63 @@ export default function GamePage() {
                 2. Выберите пополнение
               </h2>
 
-              <div className="space-y-3">
-                {displayProducts.map((product) => (
-                  <div key={product.name} className="flex flex-col gap-4 rounded-2xl border border-zinc-900 bg-zinc-900/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                    <div className="space-y-1">
-                      <h3 className="text-base font-black tracking-tight text-zinc-100 sm:text-lg">
-                        {product.name}
-                      </h3>
-                      <p className="text-sm font-extrabold text-violet-400 font-mono">
-                        {product.priceDisplay}
-                      </p>
-                    </div>
+              {promoMessage && (
+                <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-300">
+                  {promoMessage}
+                </p>
+              )}
 
-                    <button
-                      type="button"
-                      onClick={() => handleBuyClick(product)}
-                      className={`touch-manipulation w-full rounded-xl px-6 py-3 text-center text-xs font-black tracking-wide text-white transition-all duration-300 sm:w-auto ${
-                        isAllFieldsFilled
-                          ? "bg-violet-600 hover:bg-violet-500 active:scale-95"
-                          : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+              <div className="space-y-3">
+                {displayProducts.map((product: any) => {
+                  const isPromoTaken = product.promo && promoClaimed;
+                  const isThisLoading = promoLoading === product.name;
+
+                  return (
+                    <div
+                      key={product.name}
+                      className={`flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${
+                        product.promo && !isPromoTaken
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : "border-zinc-900 bg-zinc-900/20"
                       }`}
                     >
-                      Купить
-                    </button>
-                  </div>
-                ))}
+                      <div className="space-y-1">
+                        <h3 className="text-base font-black tracking-tight text-zinc-100 sm:text-lg flex items-center gap-2">
+                          {product.name}
+                          {product.promo && !isPromoTaken && (
+                            <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black text-emerald-300">
+                              АКЦИЯ
+                            </span>
+                          )}
+                        </h3>
+                        <p className={`text-sm font-extrabold font-mono ${
+                          product.promo && !isPromoTaken ? "text-emerald-400" : "text-violet-400"
+                        }`}>
+                          {isPromoTaken ? "Раскуплено" : product.priceDisplay}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isPromoTaken || isThisLoading}
+                        onClick={() => handleBuyClick(product)}
+                        className={`touch-manipulation w-full rounded-xl px-6 py-3 text-center text-xs font-black tracking-wide text-white transition-all duration-300 sm:w-auto ${
+                          isPromoTaken
+                            ? "bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed"
+                            : isAllFieldsFilled
+                            ? "bg-violet-600 hover:bg-violet-500 active:scale-95"
+                            : "bg-zinc-900 text-zinc-500 border border-zinc-800"
+                        }`}
+                      >
+                        {isPromoTaken
+                          ? "Раскуплено 🔥"
+                          : isThisLoading
+                          ? "Проверяем..."
+                          : "Купить"}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

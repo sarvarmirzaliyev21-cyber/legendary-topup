@@ -20,7 +20,7 @@ export const games = [
     popular: true,
     fields: [{ label: "PUBG ID", placeholder: "Введите PUBG ID" }],
     products: [
-      product("60 UC", 96),
+      { ...product("60 UC", 1), promo: true },
       product("300 + 25 UC", 479),
       product("600 + 60 UC", 1031),
       product("1500 + 300 UC", 2567),
@@ -35,7 +35,7 @@ export const games = [
     popular: false,
     fields: [{ label: "Player Tag", placeholder: "Введите #тег игрока" }],
     products: [
-      product("30 Gems", 176),
+      { ...product("30 Gems", 1), promo: true },
       product("80 Gems", 443),
       product("170 Gems", 887),
       product("360 Gems", 1835),
@@ -53,7 +53,7 @@ export const games = [
       { label: "Сервер", placeholder: "Введите сервер" },
     ],
     products: [
-      product("100 BC", 584),
+      { ...product("100 BC", 1), promo: true },
       product("250 BC", 1462),
       product("500 BC", 2924),
       product("1000 BC", 5847),
@@ -71,7 +71,7 @@ export const games = [
       { label: "Server ID", placeholder: "Введите Server ID" },
     ],
     products: [
-      product("86 Diamonds", 136),
+      { ...product("86 Diamonds", 1), promo: true },
       product("257 Diamonds", 384),
       product("706 Diamonds", 1055),
       product("2195 Diamonds", 3191),
@@ -86,7 +86,7 @@ export const games = [
     popular: false,
     fields: [{ label: "ID игрока", placeholder: "Введите ID Standoff 2" }],
     products: [
-      product("100 Gold", 219),
+      { ...product("100 Gold", 1), promo: true },
       product("500 Gold", 804),
       product("1000 Gold", 1608),
       product("3000 Gold", 4385),
@@ -101,7 +101,7 @@ export const games = [
     popular: false,
     fields: [{ label: "UID", placeholder: "Введите UID Free Fire" }],
     products: [
-      product("100 Diamonds", 86),
+      { ...product("100 Diamonds", 1), promo: true },
       product("310 Diamonds", 278),
       product("520 Diamonds", 450),
       product("1060 Diamonds", 911),
@@ -134,7 +134,7 @@ export const games = [
     popular: false,
     fields: [{ label: "UID", placeholder: "Введите UID" }],
     products: [
-      product("100 FC Points", 91),
+      { ...product("100 FC Points", 1), promo: true },
       product("520 FC Points", 433),
       product("1070 FC Points", 899),
       product("2200 FC Points", 1775),
@@ -180,7 +180,7 @@ export const games = [
     popular: false,
     fields: [{ label: "ID игрока", placeholder: "Введите ID" }],
     products: [
-      product("250 Gems", 72),
+      { ...product("250 Gems", 1), promo: true },
       product("800 Gems", 199),
       product("1600 Gems", 307),
       product("5000 Gems", 731),
